@@ -22,7 +22,7 @@ frappe.ui.form.set_user_image = function (frm) {
 
 		title_image.css("background-image", `url("${image}")`).html("");
 
-		image_actions.find(".sidebar-image-change, .sidebar-image-remove").show();
+		image_actions.find(".sidebar-image-change, .sidebar-image-remove, .sidebar-image-enlarge").show();
 	} else {
 		image_section.find(".sidebar-image").attr("src", null).addClass("hide");
 
@@ -37,7 +37,7 @@ frappe.ui.form.set_user_image = function (frm) {
 		title_image.css("background-image", "").html(frappe.get_abbr(title));
 
 		image_actions.find(".sidebar-image-change").show();
-		image_actions.find(".sidebar-image-remove").hide();
+		image_actions.find(".sidebar-image-remove, .sidebar-image-enlarge").hide();
 	}
 };
 
@@ -64,7 +64,7 @@ frappe.ui.form.setup_user_image_event = function (frm) {
 	// bind click on image_wrapper
 	frm.sidebar.image_wrapper.on(
 		"click",
-		".sidebar-image-change, .sidebar-image-remove",
+		".sidebar-image-change, .sidebar-image-remove, .sidebar-image-enlarge",
 		function (e) {
 			let $target = $(e.currentTarget);
 			var field = frm.get_field(frm.meta.image_field);
@@ -75,6 +75,9 @@ frappe.ui.form.setup_user_image_event = function (frm) {
 				field.$input.trigger("attach_doc_image");
 				// close sidebar
 				frm.page.close_sidebar?.();
+			} else if ($target.is(".sidebar-image-enlarge")) {
+				// Handle image enlargement
+				frappe.ui.form.enlarge_sidebar_image(frm);
 			} else {
 				/// on remove event for a sidebar image wrapper remove attach file.
 				frm.attachments.remove_attachment_by_filename(
@@ -86,4 +89,47 @@ frappe.ui.form.setup_user_image_event = function (frm) {
 			}
 		}
 	);
+};
+
+// Enlarge sidebar image functionality
+frappe.ui.form.enlarge_sidebar_image = function (frm) {
+	var image_field = frm.meta.image_field;
+	var image = frm.doc[image_field];
+	
+	if (!image) {
+		frappe.msgprint(__("No image to enlarge"));
+		return;
+	}
+	
+	var dialog = new frappe.ui.Dialog({
+		title: __("Image Preview - {0}", [frm.doc.name || frm.doctype]),
+		size: "large",
+		fields: [],
+		primary_action_label: __("Close"),
+		primary_action: function () {
+			dialog.hide();
+		}
+	});
+	
+	// Add image HTML to dialog body
+	var imageHtml = `
+		<div style="text-align: center; padding: 20px;">
+			<img src="${image}" 
+				style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 4px; cursor: pointer;" 
+				alt="Document Image" 
+				onclick="window.open('${image}', '_blank')" 
+				title="${__('Click to open in new tab')}" />
+		</div>
+		<div style="text-align: center; margin-top: 15px;">
+			<a href="${image}" download class="btn btn-primary btn-sm">
+				<i class="fa fa-download"></i> ${__('Download Image')}
+			</a>
+			<button class="btn btn-secondary btn-sm" onclick="window.open('${image}', '_blank')" style="margin-left: 10px;">
+				<i class="fa fa-external-link"></i> ${__('Open in New Tab')}
+			</button>
+		</div>
+	`;
+	
+	dialog.$body.html(imageHtml);
+	dialog.show();
 };
